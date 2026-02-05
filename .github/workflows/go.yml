@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: OTS
     env:
       GOPATH: ${{ github.workspace }}
       package: src/github.com/${{ github.repository }}
