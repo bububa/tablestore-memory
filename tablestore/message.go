@@ -357,13 +357,8 @@ func (s *MemoryStore) ListMessagesWithFilter(
 		for _, row := range resp.Rows {
 			var msg model.Message
 			parseMessageFromRow(&msg, row.Columns, row.PrimaryKey)
-			select {
-			case retCh <- msg:
-				count++
-			default:
-				// Channel closed, exit early
-				return
-			}
+			retCh <- msg
+			count++
 		}
 		for (maxCount <= 0 || count < maxCount) && resp.NextStartPrimaryKey != nil {
 			rangeReq.RangeRowQueryCriteria.StartPrimaryKey = resp.NextStartPrimaryKey
@@ -375,13 +370,8 @@ func (s *MemoryStore) ListMessagesWithFilter(
 			for _, row := range resp.Rows {
 				var msg model.Message
 				parseMessageFromRow(&msg, row.Columns, row.PrimaryKey)
-				select {
-				case retCh <- msg:
-					count++
-				default:
-					// Channel closed, exit early
-					return
-				}
+				retCh <- msg
+				count++
 			}
 		}
 	}()
