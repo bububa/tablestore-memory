@@ -18,15 +18,14 @@ type Metadata map[string]any
 // supported value types
 // --------------------
 
-var supportedValueTypes = map[reflect.Type]struct{}{
-	reflect.TypeFor[string]():  {},
-	reflect.TypeFor[int]():     {},
-	reflect.TypeFor[int32]():   {},
-	reflect.TypeFor[int64]():   {},
-	reflect.TypeFor[float32](): {},
-	reflect.TypeFor[float64](): {},
-	reflect.TypeFor[bool]():    {},
-	reflect.TypeFor[[]byte]():  {},
+var supportedValueTypes = map[reflect.Kind]struct{}{
+	reflect.String:  {},
+	reflect.Int:     {},
+	reflect.Int32:   {},
+	reflect.Int64:   {},
+	reflect.Float32: {},
+	reflect.Float64: {},
+	reflect.Bool:    {},
 }
 
 // --------------------
@@ -66,7 +65,12 @@ func validate(key string, value any) {
 }
 
 func checkSupportedValueTypes(key string, value any) {
-	if _, ok := supportedValueTypes[reflect.TypeOf(value)]; !ok {
+	t := reflect.TypeOf(value)
+	kind := t.Kind()
+	if t.Elem().Kind() == reflect.Uint8 {
+		return
+	}
+	if _, ok := supportedValueTypes[kind]; !ok {
 		panic(fmt.Sprintf(
 			"Metadata key '%s' has unsupported type '%T'. Supported types: %v",
 			key,
