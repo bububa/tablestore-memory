@@ -7,9 +7,9 @@ import (
 )
 
 func TestSession_Simple(t *testing.T) {
-	metadata := NewMetadata().
-		Put("key", "value").
-		Put("key2", 1)
+	metadata := NewMetadata()
+	metadata.Put("key", "value")
+	metadata.Put("key2", 1)
 
 	sessionSimple1 := NewSessionWithTime("test_user_123", "test_session_123", CurrentTimeMicroseconds())
 	sessionSimple1.SetMetadata(metadata)

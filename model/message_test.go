@@ -6,9 +6,9 @@ import (
 )
 
 func TestMessage_Simple(t *testing.T) {
-	metadata := NewMetadata().
-		Put("key", "value").
-		Put("key2", 1)
+	metadata := NewMetadata()
+	metadata.Put("key", "value")
+	metadata.Put("key2", 1)
 
 	// simple constructor with createTime
 	messageSimple1 := NewMessageWithTime("123", "456", 123)
