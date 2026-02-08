@@ -24,6 +24,8 @@ func parseSessionFromRow(session *model.Session, columns []*tablestore.Attribute
 		switch col.ColumnName {
 		case SessionUpdateTimeField:
 			session.UpdateTime = cast.ToInt64(col.Value)
+		case SessionSearchContentField:
+			session.SearchContent = cast.ToString(col.Value)
 		default:
 			if session.Metadata == nil {
 				session.Metadata = model.NewMetadata()
@@ -64,6 +66,8 @@ func parseMessageFromRow(message *model.Message, columns []*tablestore.Attribute
 		switch col.ColumnName {
 		case MessageContentField:
 			message.Content = cast.ToString(col.Value)
+		case MessageSearchContentField:
+			message.SearchContent = cast.ToString(col.Value)
 		default:
 			if message.Metadata == nil {
 				message.Metadata = model.NewMetadata()

@@ -9,8 +9,9 @@ type Message struct {
 	MessageID  string
 	CreateTime int64
 
-	Content  string
-	Metadata Metadata
+	Content       string
+	Metadata      Metadata
+	SearchContent string
 }
 
 // --------------------
@@ -70,6 +71,11 @@ func (m *Message) SetCreateTime(t int64) *Message {
 
 func (m *Message) SetContent(content string) *Message {
 	m.Content = content
+	return m
+}
+
+func (m *Message) SetSearchContent(content string) *Message {
+	m.SearchContent = content
 	return m
 }
 

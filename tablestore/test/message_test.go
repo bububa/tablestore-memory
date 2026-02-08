@@ -1,8 +1,10 @@
 package test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/bububa/tablestore-memory/model"
 )
@@ -163,6 +165,48 @@ func TestMessageStore(t *testing.T) {
 		t.Errorf("expect message metadata is empty, got:%d", n)
 	}
 	if err := store.DeleteMessage(message.SessionID, message.MessageID, message.CreateTime); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestMessageSearch(t *testing.T) {
+	store := MemoryStore()
+	if err := store.InitTable(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.DeleteAllMessages(); err != nil {
+		t.Error(err)
+	}
+	var total int64 = 100
+	for idx := range total {
+		messageForSearch := randomMessage("session_search")
+		messageForSearch.SetSearchContent(fmt.Sprintf("test searchable, item_%d", idx))
+		if err := store.PutMessage(messageForSearch); err != nil {
+			t.Error(err)
+		}
+	}
+	time.Sleep(time.Second * 11)
+	if resp, err := store.SearchMessages("session_search", "searchable", 0, 0, int32(total), nil); err != nil {
+		t.Error(err)
+	} else if resp.Total != total {
+		t.Errorf("expected search results:%d, got:%d", total, resp.Total)
+	}
+	if resp, err := store.SearchMessages("session_search1", "searchable", 0, 0, int32(total), nil); err != nil {
+		t.Error(err)
+	} else if resp.Total != 0 {
+		t.Errorf("expected search results:0, got:%d", resp.Total)
+	}
+	if resp, err := store.SearchMessages("session_search", "xxxxx", 0, 0, int32(total), nil); err != nil {
+		t.Error(err)
+	} else if resp.Total != 0 {
+		t.Errorf("expected search results:0, got:%d", resp.Total)
+	}
+	if resp, err := store.SearchMessages("session_search", "item_1", 0, 0, int32(total), nil); err != nil {
+		t.Error(err)
+	} else if resp.Total != 11 {
+		t.Errorf("expected search results:11, got:%d", resp.Total)
+	}
+	if _, err := store.DeleteAllMessages(); err != nil {
 		t.Error(err)
 	}
 }

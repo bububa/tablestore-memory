@@ -1,10 +1,13 @@
 package tablestore
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/aliyun/aliyun-tablestore-go-sdk/tablestore"
+	"github.com/aliyun/aliyun-tablestore-go-sdk/tablestore/search"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/bububa/tablestore-memory/model"
 )
@@ -45,6 +48,25 @@ func (s *MemoryStore) InitMessageTable() error {
 				return fmt.Errorf("create message table secondary index failed during init message table, %w", err)
 			}
 		}
+		searchIndexExists := false
+		listSearchIndexReq := new(tablestore.ListSearchIndexRequest)
+		listSearchIndexReq.TableName = s.MessageTableName
+		indexResp, err := s.clt.ListSearchIndex(listSearchIndexReq)
+		if err != nil {
+			return fmt.Errorf("list message search index failed during init message table, %w", err)
+		}
+		for _, v := range indexResp.IndexInfo {
+			if v.IndexName == s.MessageSearchIndexName {
+				searchIndexExists = true
+				break
+			}
+		}
+
+		if !searchIndexExists {
+			if err := s.createMessageSearchIndex(); err != nil {
+				return fmt.Errorf("create message table search index failed during init message table, %w", err)
+			}
+		}
 		return nil
 	}
 	tableMeta := new(tablestore.TableMeta)
@@ -76,6 +98,42 @@ func (s *MemoryStore) InitMessageTable() error {
 	return nil
 }
 
+func (s *MemoryStore) createMessageSearchIndex() error {
+	analyzer := tablestore.Analyzer_Fuzzy
+	createReq := new(tablestore.CreateSearchIndexRequest)
+	createReq.TableName = s.MessageTableName
+	createReq.IndexName = s.MessageSearchIndexName
+	createReq.IndexSchema = &tablestore.IndexSchema{
+		FieldSchemas: []*tablestore.FieldSchema{
+			{
+				FieldName: proto.String(MessageSessionIDField),
+				FieldType: tablestore.FieldType_KEYWORD,
+				Index:     proto.Bool(true),
+			},
+			{
+				FieldName: proto.String(MessageCreateTimeField),
+				FieldType: tablestore.FieldType_LONG,
+				Index:     proto.Bool(true),
+			},
+			{
+				FieldName: proto.String(MessageSearchContentField),
+				FieldType: tablestore.FieldType_TEXT,
+				Index:     proto.Bool(true),
+				Analyzer:  &analyzer,
+				AnalyzerParameter: tablestore.FuzzyAnalyzerParameter{
+					MinChars: 1,
+					MaxChars: 7,
+				},
+			},
+		},
+	}
+	_, err := s.clt.CreateSearchIndex(createReq)
+	if err != nil {
+		return fmt.Errorf("create message search index failed, %w", err)
+	}
+	return nil
+}
+
 func (s *MemoryStore) PutMessage(message *model.Message) error {
 	pk := new(tablestore.PrimaryKey)
 	pk.AddPrimaryKeyColumn(MessageSessionIDField, message.SessionID)
@@ -87,6 +145,9 @@ func (s *MemoryStore) PutMessage(message *model.Message) error {
 	putReq.PutRowChange.PrimaryKey = pk
 	if message.Content != "" {
 		putReq.PutRowChange.AddColumn(MessageContentField, message.Content)
+	}
+	if message.SearchContent != "" {
+		putReq.PutRowChange.AddColumn(MessageSearchContentField, message.SearchContent)
 	}
 	for k, v := range message.Metadata {
 		putReq.PutRowChange.AddColumn(k, v)
@@ -123,6 +184,11 @@ func (s *MemoryStore) UpdateMessage(message *model.Message) error {
 		updateReq.UpdateRowChange.PutColumn(MessageContentField, message.Content)
 	} else {
 		updateReq.UpdateRowChange.DeleteColumn(MessageContentField)
+	}
+	if message.SearchContent != "" {
+		updateReq.UpdateRowChange.PutColumn(MessageSearchContentField, message.SearchContent)
+	} else {
+		updateReq.UpdateRowChange.DeleteColumn(MessageSearchContentField)
 	}
 	for k, v := range message.Metadata {
 		updateReq.UpdateRowChange.PutColumn(k, v)
@@ -484,4 +550,83 @@ func (s *MemoryStore) getMessageCreateTimeFromSecondaryIndex(message *model.Mess
 	}
 	parseMessageFromRow(message, resp.Rows[0].Columns, resp.Rows[0].PrimaryKey)
 	return nil
+}
+
+func (s *MemoryStore) SearchMessages(sessionID string, keyword string, inclusiveStartCreateTime int64, inclusiveEndCreateTime int64, pageSize int32, nextToken []byte) (*model.Response[model.Message], error) {
+	searchReq := new(tablestore.SearchRequest)
+	searchReq.SetTableName(s.MessageTableName)
+	searchReq.SetIndexName(s.MessageSearchIndexName)
+	queries := make([]search.Query, 0, 3)
+	if sessionID != "" {
+		queries = append(queries, &search.TermQuery{
+			FieldName: MessageSessionIDField,
+			Term:      sessionID,
+		})
+	}
+	if inclusiveStartCreateTime > 0 || inclusiveEndCreateTime > 0 {
+		rangeQuery := &search.RangeQuery{
+			FieldName: MessageCreateTimeField,
+		}
+		if inclusiveStartCreateTime > 0 {
+			rangeQuery.From = inclusiveStartCreateTime
+			rangeQuery.IncludeLower = true
+		} else {
+			rangeQuery.From = tablestore.MIN
+		}
+		if inclusiveEndCreateTime > 0 {
+			rangeQuery.To = inclusiveEndCreateTime
+			rangeQuery.IncludeUpper = true
+		} else {
+			rangeQuery.To = tablestore.MAX
+		}
+		queries = append(queries, rangeQuery)
+	}
+	if keyword != "" {
+		queries = append(queries, &search.MatchPhraseQuery{
+			FieldName: MessageSearchContentField,
+			Text:      keyword,
+		})
+	}
+	searchQuery := search.NewSearchQuery()
+	if l := len(queries); l > 1 {
+		searchQuery.SetQuery(&search.BoolQuery{
+			MustQueries: queries,
+		})
+	} else if l == 1 {
+		searchQuery.SetQuery(queries[0])
+	} else {
+		return nil, errors.New("missing search conditions")
+	}
+	searchQuery.SetSort(&search.Sort{
+		Sorters: []search.Sorter{
+			&search.ScoreSort{
+				Order: search.SortOrder_DESC.Enum(), // 从得分高到低排序。
+			},
+		},
+	})
+	searchQuery.SetGetTotalCount(true)
+	searchQuery.SetLimit(pageSize)
+	if nextToken != nil {
+		searchQuery.SetToken(nextToken)
+	}
+	searchReq.SetSearchQuery(searchQuery)
+	searchReq.SetColumnsToGet(&tablestore.ColumnsToGet{
+		ReturnAll: true,
+	})
+	resp, err := s.clt.Search(searchReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search messages, %w", err)
+	}
+	ret := new(model.Response[model.Message])
+	ret.Total = resp.TotalCount
+	ret.Hits = make([]model.Message, 0, len(resp.Rows))
+	for _, row := range resp.Rows {
+		var message model.Message
+		parseMessageFromRow(&message, row.Columns, row.PrimaryKey)
+		ret.Hits = append(ret.Hits, message)
+	}
+	if resp.NextToken != nil {
+		ret.NextToken = resp.NextToken
+	}
+	return ret, nil
 }

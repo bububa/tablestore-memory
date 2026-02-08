@@ -28,8 +28,14 @@ func NewMemoryStore(clt *tablestore.TableStoreClient, opts ...model.Option) *Mem
 	if ret.SessionSecondaryIndexName == "" {
 		ret.SessionSecondaryIndexName = DefaultSessionSecondaryIndexName
 	}
+	if ret.SessionSearchIndexName == "" {
+		ret.SessionSearchIndexName = DefaultSessionSearchIndexName
+	}
 	if ret.MessageSecondaryIndexName == "" {
 		ret.MessageSecondaryIndexName = DefaultMessageSecondaryIndexName
+	}
+	if ret.MessageSearchIndexName == "" {
+		ret.MessageSearchIndexName = DefaultMessageSearchIndexName
 	}
 	return ret
 }
