@@ -8,8 +8,9 @@ type Session struct {
 	UserID    string
 	SessionID string
 
-	UpdateTime int64
-	Metadata   Metadata
+	UpdateTime    int64
+	Metadata      Metadata
+	SearchContent string
 }
 
 // --------------------
@@ -70,6 +71,11 @@ func (s *Session) SetMetadata(metadata Metadata) *Session {
 		metadata = NewMetadata()
 	}
 	s.Metadata = metadata
+	return s
+}
+
+func (s *Session) SetSearchContent(content string) *Session {
+	s.SearchContent = content
 	return s
 }
 

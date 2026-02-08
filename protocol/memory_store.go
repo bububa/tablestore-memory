@@ -62,6 +62,15 @@ type MemoryStore interface {
 		nextStartPrimaryKey *tablestore.PrimaryKey,
 	) (*model.Response[model.Session], error)
 
+	SearchSessions(
+		userID string,
+		keyword string,
+		inclusiveStartUpdateTime int64,
+		inclusiveEndUpdateTime int64,
+		pageSize int32,
+		nextToken []byte,
+	) (*model.Response[model.Session], error)
+
 	// <-------- Message related -------->
 
 	// PutMessage insert (overwrite) a message
@@ -108,6 +117,15 @@ type MemoryStore interface {
 		order tablestore.Direction,
 		pageSize int,
 		nextStartPrimaryKey *tablestore.PrimaryKey,
+	) (*model.Response[model.Message], error)
+
+	SearchMessages(
+		sessionID string,
+		keyword string,
+		inclusiveStartCreateTime int64,
+		inclusiveEndCreateTime int64,
+		pageSize int32,
+		nextToken []byte,
 	) (*model.Response[model.Message], error)
 
 	// <-------- Infra -------->
