@@ -5,13 +5,13 @@ package model
 // --------------------
 
 type Message struct {
-	SessionID  string
-	MessageID  string
-	CreateTime int64
+	SessionID  string `json:"session_id,omitempty"`
+	MessageID  string `json:"message,omitempty"`
+	CreateTime int64  `json:"create_time,omitempty"`
 
-	Content       string
-	Metadata      Metadata
-	SearchContent string
+	Content       string   `json:"content,omitempty"`
+	Metadata      Metadata `json:"metadata,omitempty"`
+	SearchContent string   `json:"search_content,omitempty"`
 }
 
 // --------------------
