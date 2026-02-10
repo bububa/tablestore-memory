@@ -5,12 +5,12 @@ package model
 // --------------------
 
 type Session struct {
-	UserID    string
-	SessionID string
+	UserID    string `json:"user_id,omitempty"`
+	SessionID string `json:"session_id,omitempty"`
 
-	UpdateTime    int64
-	Metadata      Metadata
-	SearchContent string
+	UpdateTime    int64    `json:"update_time,omitempty"`
+	Metadata      Metadata `json:"metadata,omitempty"`
+	SearchContent string   `json:"search_content,omitempty"`
 }
 
 // --------------------
