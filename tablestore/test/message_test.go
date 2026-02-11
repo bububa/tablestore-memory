@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aliyun/aliyun-tablestore-go-sdk/tablestore"
 	"github.com/bububa/tablestore-memory/model"
 )
 
@@ -98,6 +99,22 @@ func TestMessageStore(t *testing.T) {
 	}
 	if total != count {
 		t.Errorf("expect total messages:%d, got:%d", total, count)
+	}
+	pageResp, err := store.ListMessagesPaginated("session_for_delete_1", nil, 0, 0, tablestore.BACKWARD, 10, nil)
+	if err != nil {
+		t.Error(err)
+	} else if len(pageResp.Hits) != 10 {
+		t.Errorf("expect 10 items in paginaged message list, got:%d", len(pageResp.Hits))
+	} else if pageResp.NextStartPrimaryKey == nil {
+		t.Error("expect next primary key should not be nil, got nil")
+	}
+	pageResp, err = store.ListMessagesPaginated("session_for_delete_1", nil, 0, 0, tablestore.BACKWARD, 80, pageResp.NextStartPrimaryKey)
+	if err != nil {
+		t.Error(err)
+	} else if len(pageResp.Hits) != session1Count-10 {
+		t.Errorf("expect %d items in paginaged message list, got:%d", session1Count-10, len(pageResp.Hits))
+	} else if pageResp.NextStartPrimaryKey != nil {
+		t.Errorf("expect next primary key should be nil, got %v", pageResp.NextStartPrimaryKey)
 	}
 	if n, err := store.DeleteMessages("session_for_delete_1"); err != nil {
 		t.Error(err)

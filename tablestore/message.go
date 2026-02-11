@@ -475,22 +475,22 @@ func (s *MemoryStore) ListMessagesPaginated(
 		if inclusiveStartCreateTime > 0 {
 			startPk.AddPrimaryKeyColumn(MessageCreateTimeField, inclusiveStartCreateTime)
 		} else {
-			startPk.PrimaryKeys = append(startPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageCreateTimeField, Value: constMin})
+			startPk.PrimaryKeys = append(startPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageCreateTimeField, PrimaryKeyOption: constMin})
 		}
-		startPk.PrimaryKeys = append(startPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageMessageIDField, Value: constMin})
+		startPk.PrimaryKeys = append(startPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageMessageIDField, PrimaryKeyOption: constMin})
 	}
 	endPk := new(tablestore.PrimaryKey)
 	if sessionID != "" {
 		endPk.AddPrimaryKeyColumn(MessageSessionIDField, sessionID)
 	} else {
-		endPk.PrimaryKeys = append(endPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageSessionIDField, Value: constMax})
+		endPk.PrimaryKeys = append(endPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageSessionIDField, PrimaryKeyOption: constMax})
 	}
 	if inclusiveEndCreateTime > 0 {
 		endPk.AddPrimaryKeyColumn(MessageCreateTimeField, inclusiveEndCreateTime)
 	} else {
-		endPk.PrimaryKeys = append(endPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageCreateTimeField, Value: constMax})
+		endPk.PrimaryKeys = append(endPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageCreateTimeField, PrimaryKeyOption: constMax})
 	}
-	endPk.PrimaryKeys = append(endPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageMessageIDField, Value: constMax})
+	endPk.PrimaryKeys = append(endPk.PrimaryKeys, &tablestore.PrimaryKeyColumn{ColumnName: MessageMessageIDField, PrimaryKeyOption: constMax})
 	criteria := new(tablestore.RangeRowQueryCriteria)
 	criteria.TableName = s.MessageTableName
 	criteria.StartPrimaryKey = startPk
